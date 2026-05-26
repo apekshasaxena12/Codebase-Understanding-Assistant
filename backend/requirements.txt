@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pgvector
+python-dotenv
+httpx
+gitpython
+langchain
+langchain-community
+openai
+networkx
