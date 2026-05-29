@@ -4,7 +4,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 load_dotenv()
 
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/codebase_assistant"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://apekshasaxena@/codebase_assistant?host=/tmp"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
