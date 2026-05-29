@@ -13,7 +13,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+_embedding_model = None
+
+def get_embedding_model():
+    global _embedding_model
+    if _embedding_model is None:
+        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _embedding_model
 
 # supported file extensions and their types
 SUPPORTED_EXTENSIONS = {
@@ -183,7 +189,7 @@ def extract_symbols(file_path: str, source_code: str) -> dict:
 
 def embed_chunks(chunks: list[dict]) -> list[dict]:
     texts = [chunk["content"] for chunk in chunks]
-    embeddings = embedding_model.encode(texts, show_progress_bar=False)
+    embeddings = get_embedding_model().encode(texts, show_progress_bar=False)
     for i, chunk in enumerate(chunks):
         chunk["embedding"] = embeddings[i].tolist()
     return chunks
