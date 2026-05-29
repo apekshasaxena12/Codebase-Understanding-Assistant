@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import mermaid from "mermaid";
 import * as d3 from "d3";
 
-const API = "http://localhost:8000/api";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 mermaid.initialize({
   startOnLoad: false,

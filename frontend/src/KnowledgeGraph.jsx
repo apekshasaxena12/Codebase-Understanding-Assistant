@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
 
-const API = "http://localhost:8000/api";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 const TYPE = {
   file:     { stroke: "#7fff6e", fill: "#0d1f0d", r: 28, label: "#7fff6e" },

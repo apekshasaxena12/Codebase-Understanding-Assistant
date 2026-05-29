@@ -5,7 +5,7 @@ import DiagramPanel from "./DiagramPanel";
 import KnowledgeGraph from "./KnowledgeGraph";
 
 
-const API = "http://localhost:8000/api";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 // ── design tokens (inline so no build step needed) ────────────
 const css = `

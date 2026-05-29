@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
 
-const API = "http://localhost:8000/api";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
 export default function GraphPanel({ repoId, repoUrl, onClose }) {
   const svgRef = useRef(null);
