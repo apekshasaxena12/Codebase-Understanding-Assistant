@@ -6,7 +6,7 @@ import uuid
 
 import git
 import networkx as nx
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from models.chunk import CodeChunk, FileSymbol, FileDependency
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
@@ -18,7 +18,7 @@ _embedding_model = None
 def get_embedding_model():
     global _embedding_model
     if _embedding_model is None:
-        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        _embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
     return _embedding_model
 
 # supported file extensions and their types
@@ -189,7 +189,7 @@ def extract_symbols(file_path: str, source_code: str) -> dict:
 
 def embed_chunks(chunks: list[dict]) -> list[dict]:
     texts = [chunk["content"] for chunk in chunks]
-    embeddings = get_embedding_model().encode(texts, show_progress_bar=False)
+    embeddings = list(get_embedding_model().embed(texts))
     for i, chunk in enumerate(chunks):
         chunk["embedding"] = embeddings[i].tolist()
     return chunks
