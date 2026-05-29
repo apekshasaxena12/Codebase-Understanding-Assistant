@@ -15,7 +15,10 @@ app = FastAPI(title="Codebase Understanding Assistant")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://codebase-understanding-assistant.vercel.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
