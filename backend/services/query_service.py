@@ -6,17 +6,18 @@ load_dotenv()
 from groq import Groq
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from fastembed import TextEmbedding
 from services import flow_service
 
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-_embedding_model = None
 
-def get_embedding_model():
-    global _embedding_model
-    if _embedding_model is None:
-        _embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
-    return _embedding_model
+import requests
+
+HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+
+def get_embedding(text: str) -> list[float]:
+    headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+    response = requests.post(HF_API_URL, headers=headers, json={"inputs": [text], "options": {"wait_for_model": True}})
+    return response.json()[0]
 
 def reciprocal_rank_fusion(vector_results, keyword_results, k=60):
     scores = {}
@@ -122,7 +123,7 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
             return {"answer": answer_text, "sources": [], "mermaid": result["mermaid"], "diagram_type": "flow"}
 
     # ── normal Q&A ────────────────────────────────────────────
-    question_vector = list(get_embedding_model().embed([question]))[0].tolist()
+    question_vector = get_embedding(question)
     vector_results = db.execute(text(f"""
         SELECT file_path, content, start_line, end_line
         FROM code_chunks

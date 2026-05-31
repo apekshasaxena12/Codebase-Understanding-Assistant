@@ -6,20 +6,20 @@ import uuid
 
 import git
 import networkx as nx
-from fastembed import TextEmbedding
 from models.chunk import CodeChunk, FileSymbol, FileDependency
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
 load_dotenv()
 
-_embedding_model = None
+import requests
 
-def get_embedding_model():
-    global _embedding_model
-    if _embedding_model is None:
-        _embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
-    return _embedding_model
+HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+
+def get_embeddings(texts: list[str]) -> list[list[float]]:
+    headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+    response = requests.post(HF_API_URL, headers=headers, json={"inputs": texts, "options": {"wait_for_model": True}})
+    return response.json()
 
 # supported file extensions and their types
 SUPPORTED_EXTENSIONS = {
@@ -189,9 +189,9 @@ def extract_symbols(file_path: str, source_code: str) -> dict:
 
 def embed_chunks(chunks: list[dict]) -> list[dict]:
     texts = [chunk["content"] for chunk in chunks]
-    embeddings = list(get_embedding_model().embed(texts))
+    embeddings = get_embeddings(texts)
     for i, chunk in enumerate(chunks):
-        chunk["embedding"] = embeddings[i].tolist()
+        chunk["embedding"] = embeddings[i]
     return chunks
 
 

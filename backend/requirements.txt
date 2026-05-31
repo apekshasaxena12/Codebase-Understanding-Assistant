@@ -3,7 +3,7 @@ uvicorn
 sqlalchemy
 psycopg2-binary
 pgvector
-fastembed
+requests
 gitpython
 python-dotenv
 groq
