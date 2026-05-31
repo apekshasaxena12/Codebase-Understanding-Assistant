@@ -19,6 +19,10 @@ HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/s
 def get_embeddings(texts: list[str]) -> list[list[float]]:
     headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
     response = requests.post(HF_API_URL, headers=headers, json={"inputs": texts, "options": {"wait_for_model": True}})
+    print(f"DEBUG HF response status: {response.status_code}")
+    print(f"DEBUG HF response: {response.text[:500]}")
+    if response.status_code != 200:
+        raise Exception(f"HF API error: {response.status_code} {response.text[:200]}")
     return response.json()
 
 # supported file extensions and their types
