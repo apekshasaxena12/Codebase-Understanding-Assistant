@@ -29,6 +29,7 @@ def get_embedding(text: str) -> list[float]:
         },
         json={
             "model": "jina-embeddings-v3",
+            "task": "retrieval.query",
             "input": [text]
         },
         timeout=30

@@ -35,6 +35,7 @@ def get_embeddings(texts: list[str]) -> list[list[float]]:
 
         payload = {
             "model": "jina-embeddings-v3",
+            "task": "retrieval.passage",
             "input": batch
         }
 
