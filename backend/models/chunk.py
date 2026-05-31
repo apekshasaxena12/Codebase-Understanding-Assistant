@@ -17,7 +17,7 @@ class CodeChunk(Base):
     content = Column(Text, nullable=False)
     start_line = Column(Integer)
     end_line = Column(Integer)
-    embedding = Column(Vector(384))
+    embedding = Column(Vector(1024))
 
 
 class FileSymbol(Base):

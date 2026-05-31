@@ -14,20 +14,56 @@ load_dotenv()
 
 import requests
 
-HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+JINA_API_URL = "https://api.jina.ai/v1/embeddings"
+
 
 def get_embeddings(texts: list[str]) -> list[list[float]]:
-    headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+    headers = {
+        "Authorization": f"Bearer {os.getenv('JINA_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+
     all_embeddings = []
-    batch_size = 32
+    batch_size = 20
+
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i + batch_size]
-        print(f"DEBUG HF: sending batch {i//batch_size + 1}, size={len(batch)}")
-        response = requests.post(HF_API_URL, headers=headers, json={"inputs": batch, "options": {"wait_for_model": True}})
-        print(f"DEBUG HF status: {response.status_code}, response: {response.text[:200]}")
+
+        print(
+            f"DEBUG JINA: sending batch {i // batch_size + 1}, size={len(batch)}"
+        )
+
+        payload = {
+            "model": "jina-embeddings-v3",
+            "input": batch
+        }
+
+        response = requests.post(
+            JINA_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+
+        print(
+            f"DEBUG JINA status={response.status_code}"
+        )
+
         if response.status_code != 200:
-            raise Exception(f"HF API error: {response.status_code} {response.text[:200]}")
-        all_embeddings.extend(response.json())
+            print(response.text)
+            raise Exception(
+                f"Jina API Error: {response.status_code} {response.text}"
+            )
+
+        result = response.json()
+
+        embeddings = [
+            item["embedding"]
+            for item in result["data"]
+        ]
+
+        all_embeddings.extend(embeddings)
+
     return all_embeddings
 
 # supported file extensions and their types

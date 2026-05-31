@@ -12,12 +12,36 @@ groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 import requests
 
-HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+JINA_API_URL = "https://api.jina.ai/v1/embeddings"
 
 def get_embedding(text: str) -> list[float]:
-    headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
-    response = requests.post(HF_API_URL, headers=headers, json={"inputs": [text], "options": {"wait_for_model": True}})
-    return response.json()[0]
+
+    api_key = os.getenv("JINA_API_KEY")
+
+    if not api_key:
+        raise Exception("JINA_API_KEY missing")
+
+    response = requests.post(
+        JINA_API_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "jina-embeddings-v3",
+            "input": [text]
+        },
+        timeout=30
+    )
+
+    if response.status_code != 200:
+        raise Exception(
+            f"Jina API error: {response.status_code} {response.text}"
+        )
+
+    data = response.json()
+
+    return data["data"][0]["embedding"]
 
 def reciprocal_rank_fusion(vector_results, keyword_results, k=60):
     scores = {}
