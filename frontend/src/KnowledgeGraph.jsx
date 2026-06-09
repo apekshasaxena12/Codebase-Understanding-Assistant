@@ -371,7 +371,7 @@ export default function KnowledgeGraph({ repoId, repoUrl, onClose }) {
               {error}
             </div>
           )}
-          <svg ref={svgRef} style={{ width: "100%", height: "100%", display: loading || error ? "none" : "block" }} />
+          <svg ref={svgRef} style={{ width: "100%", height: "100%", display: "block" }} />
 
           {/* zoom controls */}
           {!loading && !error && (
