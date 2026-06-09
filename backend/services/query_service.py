@@ -1,48 +1,42 @@
 import os
 import re
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from groq import Groq
+import httpx
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+
+from clients import groq_client, JINA_API_URL
 from services import flow_service
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-import requests
-
-JINA_API_URL = "https://api.jina.ai/v1/embeddings"
-
-def get_embedding(text: str) -> list[float]:
-
+async def get_embedding(text_input: str) -> list[float]:
     api_key = os.getenv("JINA_API_KEY")
-
     if not api_key:
         raise Exception("JINA_API_KEY missing")
 
-    response = requests.post(
-        JINA_API_URL,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "jina-embeddings-v3",
-            "task": "retrieval.query",
-            "input": [text]
-        },
-        timeout=30
-    )
-
-    if response.status_code != 200:
-        raise Exception(
-            f"Jina API error: {response.status_code} {response.text}"
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            JINA_API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "jina-embeddings-v3",
+                "task": "retrieval.query",
+                "input": [text_input],
+            },
+            timeout=30,
         )
 
-    data = response.json()
+    if response.status_code != 200:
+        raise Exception(f"Jina API error: {response.status_code} {response.text}")
 
-    return data["data"][0]["embedding"]
+    return response.json()["data"][0]["embedding"]
+
 
 def reciprocal_rank_fusion(vector_results, keyword_results, k=60):
     scores = {}
@@ -97,26 +91,46 @@ def get_symbol_context(repo_id: str, file_paths: list[str], db: Session) -> str:
     return "\n".join(parts)
 
 
+_SMALLTALK_PATTERNS = [
+    r"^(hi+|hey+|hello+|hola|sup|what'?s up|yo+|howdy|greetings|good\s*(morning|afternoon|evening|day))\W*$",
+    r"^(thanks?|thank\s*you|ty|thx|thank\s*u|cheers|much\s*appreciated)\W*$",
+    r"^(bye+|goodbye+|see\s*ya|see\s*you|cya|later|take\s*care|farewell)\W*$",
+    r"^(ok+|okay+|got\s*it|alright|sure|cool|nice|great|awesome|perfect|sounds?\s*good)\W*$",
+    r"who\s+are\s+you|what\s+are\s+you|what\s+(can|do)\s+you\s+do|your\s+purpose",
+]
+
+_CONVERSATIONAL_SYSTEM = (
+    "You are Codebase Assistant, an AI that helps developers understand GitHub repositories. "
+    "You can explain architecture, trace function flows, find where logic lives, and answer "
+    "questions about any ingested codebase. "
+    "When the user sends a greeting, thanks, farewell, or any non-code question, "
+    "respond naturally and briefly in a friendly tone. "
+    "Do not produce code snippets or file references unless the user asks a code question. "
+    "Keep replies concise — 1-3 sentences max."
+)
+
+
+def is_smalltalk(question: str) -> bool:
+    q = question.strip().lower()
+    return any(re.search(p, q) for p in _SMALLTALK_PATTERNS)
+
+
 def detect_intent(question: str) -> tuple[str, str | None]:
-    """
-    Detects if the question is asking for:
-    - 'flow': code flow / execution trace of a specific function
-    - 'architecture': overall architecture diagram
-    - 'normal': regular Q&A
-    Returns (intent, function_name_or_None)
-    """
     q = question.lower()
 
-    # architecture intent
-    arch_patterns = ["architecture", "overview diagram", "system diagram", "how does the system", "high level", "overall structure", "architecture diagram"]
+    arch_patterns = [
+        "architecture", "overview diagram", "system diagram",
+        "how does the system", "high level", "overall structure", "architecture diagram",
+    ]
     if any(p in q for p in arch_patterns):
         return "architecture", None
 
-    # flow intent — look for function name mentions
-    flow_patterns = ["trace", "flow", "execution", "how does .* work", "walk me through", "step by step", "call chain", "how is .* called"]
+    flow_patterns = [
+        "trace", "flow", "execution", "how does .* work",
+        "walk me through", "step by step", "call chain", "how is .* called",
+    ]
     for pattern in flow_patterns:
         if re.search(pattern, q):
-            # try to extract function name from question
             fn_match = re.search(r'`([^`]+)`|"([^"]+)"|(\b\w+(?:_\w+)*)\(\)', question)
             if fn_match:
                 fn_name = fn_match.group(1) or fn_match.group(2) or fn_match.group(3)
@@ -127,8 +141,16 @@ def detect_intent(question: str) -> tuple[str, str | None]:
 
 
 async def answer(repo_id: str, question: str, db: Session) -> dict:
+    if is_smalltalk(question):
+        llm_response = await groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": _CONVERSATIONAL_SYSTEM},
+                {"role": "user", "content": question},
+            ],
+        )
+        return {"answer": llm_response.choices[0].message.content, "sources": [], "mermaid": None}
 
-    # ── detect intent ─────────────────────────────────────────
     intent, fn_name = detect_intent(question)
 
     if intent == "architecture":
@@ -140,22 +162,29 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
 
     if intent == "flow" and fn_name:
         result = await flow_service.get_flow(repo_id, fn_name, db)
-        if "error" in result:
-            # fall through to normal Q&A
-            pass
-        else:
+        if "error" not in result:
             answer_text = result["explanation"] + "\n\n*Flow diagram rendered below.*"
             return {"answer": answer_text, "sources": [], "mermaid": result["mermaid"], "diagram_type": "flow"}
 
     # ── normal Q&A ────────────────────────────────────────────
-    question_vector = get_embedding(question)
-    vector_results = db.execute(text(f"""
-        SELECT file_path, content, start_line, end_line
-        FROM code_chunks
-        WHERE repo_id = :repo_id
-        ORDER BY embedding <=> '[{",".join(map(str, question_vector))}]'::vector
-        LIMIT 10
-    """), {"repo_id": repo_id}).fetchall()
+
+    has_embeddings = db.execute(text("""
+        SELECT 1 FROM code_chunks
+        WHERE repo_id = :repo_id AND embedding IS NOT NULL
+        LIMIT 1
+    """), {"repo_id": repo_id}).fetchone() is not None
+
+    if has_embeddings:
+        question_vector = await get_embedding(question)
+        vector_results = db.execute(text(f"""
+            SELECT file_path, content, start_line, end_line
+            FROM code_chunks
+            WHERE repo_id = :repo_id AND embedding IS NOT NULL
+            ORDER BY embedding <=> '[{",".join(map(str, question_vector))}]'::vector
+            LIMIT 10
+        """), {"repo_id": repo_id}).fetchall()
+    else:
+        vector_results = []
 
     keyword_results = db.execute(text("""
         SELECT file_path, content, start_line, end_line
@@ -169,17 +198,27 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
     all_chunks = reciprocal_rank_fusion(vector_results, keyword_results)
 
     if not all_chunks:
-        return {"answer": "No relevant code found.", "sources": [], "mermaid": None}
+        llm_response = await groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": _CONVERSATIONAL_SYSTEM},
+                {"role": "user", "content": question},
+            ],
+        )
+        return {"answer": llm_response.choices[0].message.content, "sources": [], "mermaid": None}
 
-    matched_files = list(set([c.file_path for c in all_chunks]))
+    matched_files = list(set(c.file_path for c in all_chunks))
     symbol_context = get_symbol_context(repo_id, matched_files, db)
     code_context = "\n\n".join([
         f"# {c.file_path} (lines {c.start_line}–{c.end_line})\n{c.content}"
         for c in all_chunks
     ])
-    full_context = (symbol_context + "\n---\n\n## Relevant Code Snippets\n\n" + code_context) if symbol_context else code_context
+    full_context = (
+        (symbol_context + "\n---\n\n## Relevant Code Snippets\n\n" + code_context)
+        if symbol_context else code_context
+    )
 
-    llm_response = groq_client.chat.completions.create(
+    llm_response = await groq_client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
             {
@@ -191,12 +230,12 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
                     "Use both to give precise, accurate answers. "
                     "Always mention which file(s) and function/class names are relevant. "
                     "Format your answer clearly using markdown."
-                )
+                ),
             },
-            {"role": "user", "content": f"Here is the codebase context:\n\n{full_context}\n\nQuestion: {question}"}
-        ]
+            {"role": "user", "content": f"Here is the codebase context:\n\n{full_context}\n\nQuestion: {question}"},
+        ],
     )
 
     final_answer = llm_response.choices[0].message.content
-    sources = list(set([c.file_path for c in all_chunks]))
+    sources = list(set(c.file_path for c in all_chunks))
     return {"answer": final_answer, "sources": sources, "mermaid": None}

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: codebase-assistant-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: codebase-assistant-db
+          property: connectionString
+      - key: JINA_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false   # set to your Vercel URL, e.g. https://your-app.vercel.app
+      - key: API_KEY
+        sync: false   # set to a secret value to require X-API-Key header on all /api/* requests
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MAX_FILES
+        value: "1500"
+      - key: EMBED_BATCH_SIZE
+        value: "32"
+      - key: EMBED_CONCURRENCY
+        value: "2"
+      - key: MAX_EMBED_CHARS
+        value: "1500"
+      - key: MAX_EMBED_CHUNKS
+        value: "500"
+
+databases:
+  - name: codebase-assistant-db
+    databaseName: codebase_assistant
+    user: codebase_assistant
+    plan: free
+    postgresMajorVersion: "16"

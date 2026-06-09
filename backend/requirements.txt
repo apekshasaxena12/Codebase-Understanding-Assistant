@@ -3,8 +3,11 @@ uvicorn
 sqlalchemy
 psycopg2-binary
 pgvector
-requests
+httpx
 gitpython
 python-dotenv
 groq
 networkx
+anyio
+cachetools
+slowapi
