@@ -1,6 +1,7 @@
 import './App.css';
 import GraphPanel from "./GraphPanel";
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useState, useEffect, useRef } from "react";
 import DiagramPanel from "./DiagramPanel";
 import KnowledgeGraph from "./KnowledgeGraph";
@@ -277,20 +278,6 @@ function QueryPanel({ repoId, repoUrl, theme, onShowGraph, onShowDiagram, onShow
     URL.revokeObjectURL(url);
   }
 
-  function exportCsv() {
-    const header = "role,message,sources";
-    const rows = messages.map(m => {
-      const msg = `"${m.text.replace(/"/g, '""')}"`;
-      const srcs = `"${(m.sources || []).join("; ")}"`;
-      return `${m.role},${msg},${srcs}`;
-    });
-    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `chat-${repoUrl.split("/").pop()}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  }
-
   const btnStyle = {
     background: "transparent",
     border: "1px solid var(--border)",
@@ -338,11 +325,6 @@ function QueryPanel({ repoId, repoUrl, theme, onShowGraph, onShowDiagram, onShow
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-dim)"; }}>
                 Export .txt
               </button>
-              <button onClick={exportCsv} style={btnStyle}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-dim)"; }}>
-                Export .csv
-              </button>
             </>
           )}
         </div>
@@ -369,6 +351,7 @@ function QueryPanel({ repoId, repoUrl, theme, onShowGraph, onShowDiagram, onShow
               fontWeight: msg.role === "user" ? 600 : 400,
             }}>
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   pre: ({ children, ...props }) => (
                     <pre style={{
@@ -386,6 +369,18 @@ function QueryPanel({ repoId, repoUrl, theme, onShowGraph, onShowDiagram, onShow
                     ? <code style={{ fontFamily: "var(--mono)", fontSize: "0.9em", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }} {...props}>{children}</code>
                     : <code style={{ fontFamily: "var(--mono)", fontSize: 12 }} {...props}>{children}</code>,
                   p: ({ children, ...props }) => <p style={{ marginBottom: 8 }} {...props}>{children}</p>,
+                  h1: ({ children, ...props }) => <h1 style={{ fontSize: 16, margin: "10px 0 6px" }} {...props}>{children}</h1>,
+                  h2: ({ children, ...props }) => <h2 style={{ fontSize: 15, margin: "10px 0 6px" }} {...props}>{children}</h2>,
+                  h3: ({ children, ...props }) => <h3 style={{ fontSize: 14, margin: "10px 0 6px" }} {...props}>{children}</h3>,
+                  ul: ({ children, ...props }) => <ul style={{ marginBottom: 8, paddingLeft: 20 }} {...props}>{children}</ul>,
+                  ol: ({ children, ...props }) => <ol style={{ marginBottom: 8, paddingLeft: 20 }} {...props}>{children}</ol>,
+                  table: ({ children, ...props }) => (
+                    <div style={{ overflowX: "auto", margin: "8px 0" }}>
+                      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }} {...props}>{children}</table>
+                    </div>
+                  ),
+                  th: ({ children, ...props }) => <th style={{ border: "1px solid var(--border)", padding: "6px 10px", textAlign: "left", background: "var(--bg)" }} {...props}>{children}</th>,
+                  td: ({ children, ...props }) => <td style={{ border: "1px solid var(--border)", padding: "6px 10px", verticalAlign: "top" }} {...props}>{children}</td>,
                 }}
               >{msg.text}</ReactMarkdown>
               {msg.mermaid && <MermaidBlock code={msg.mermaid} theme={theme} />}

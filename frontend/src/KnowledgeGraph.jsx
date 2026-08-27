@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
 
@@ -474,8 +476,31 @@ export default function KnowledgeGraph({ repoId, repoUrl, onClose }) {
                   ))}
                 </div>
                 {answer && (
-                  <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#c8c8d8", background: "#111118", border: "1px solid #1e1e2e", borderRadius: 4, padding: "12px 14px", lineHeight: 1.8, whiteSpace: "pre-wrap", maxHeight: 280, overflow: "auto" }}>
-                    {answer}
+                  <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#c8c8d8", background: "#111118", border: "1px solid #1e1e2e", borderRadius: 4, padding: "12px 14px", lineHeight: 1.8, maxHeight: 280, overflow: "auto" }}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children, ...props }) => <p style={{ marginBottom: 8 }} {...props}>{children}</p>,
+                        h1: ({ children, ...props }) => <h1 style={{ fontSize: 13, margin: "8px 0 4px", color: "#7fff6e" }} {...props}>{children}</h1>,
+                        h2: ({ children, ...props }) => <h2 style={{ fontSize: 12.5, margin: "8px 0 4px", color: "#7fff6e" }} {...props}>{children}</h2>,
+                        h3: ({ children, ...props }) => <h3 style={{ fontSize: 12, margin: "8px 0 4px", color: "#7fff6e" }} {...props}>{children}</h3>,
+                        ul: ({ children, ...props }) => <ul style={{ marginBottom: 8, paddingLeft: 18 }} {...props}>{children}</ul>,
+                        ol: ({ children, ...props }) => <ol style={{ marginBottom: 8, paddingLeft: 18 }} {...props}>{children}</ol>,
+                        code: ({ inline, children, ...props }) => inline
+                          ? <code style={{ background: "#0a0a0f", border: "1px solid #1e1e2e", borderRadius: 3, padding: "1px 4px" }} {...props}>{children}</code>
+                          : <code {...props}>{children}</code>,
+                        pre: ({ children, ...props }) => (
+                          <pre style={{ background: "#0a0a0f", border: "1px solid #1e1e2e", borderRadius: 4, padding: "8px 10px", overflowX: "auto", margin: "8px 0" }} {...props}>{children}</pre>
+                        ),
+                        table: ({ children, ...props }) => (
+                          <div style={{ overflowX: "auto", margin: "8px 0" }}>
+                            <table style={{ borderCollapse: "collapse", width: "100%" }} {...props}>{children}</table>
+                          </div>
+                        ),
+                        th: ({ children, ...props }) => <th style={{ border: "1px solid #1e1e2e", padding: "5px 8px", textAlign: "left", background: "#0a0a0f" }} {...props}>{children}</th>,
+                        td: ({ children, ...props }) => <td style={{ border: "1px solid #1e1e2e", padding: "5px 8px", verticalAlign: "top" }} {...props}>{children}</td>,
+                      }}
+                    >{answer}</ReactMarkdown>
                   </div>
                 )}
               </Section>

@@ -229,7 +229,11 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
                     "and the actual relevant code snippets. "
                     "Use both to give precise, accurate answers. "
                     "Always mention which file(s) and function/class names are relevant. "
-                    "Format your answer clearly using markdown."
+                    "Format your answer using plain markdown only — never raw HTML tags "
+                    "(no <ul>, <li>, <div>, etc.). Prefer short paragraphs and markdown "
+                    "bullet lists for step-by-step explanations; only use a markdown table "
+                    "when comparing multiple items across the same few columns, and keep "
+                    "tables small (a handful of rows)."
                 ),
             },
             {"role": "user", "content": f"Here is the codebase context:\n\n{full_context}\n\nQuestion: {question}"},
