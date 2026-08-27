@@ -143,7 +143,7 @@ def detect_intent(question: str) -> tuple[str, str | None]:
 async def answer(repo_id: str, question: str, db: Session) -> dict:
     if is_smalltalk(question):
         llm_response = await groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {"role": "system", "content": _CONVERSATIONAL_SYSTEM},
                 {"role": "user", "content": question},
@@ -199,7 +199,7 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
 
     if not all_chunks:
         llm_response = await groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {"role": "system", "content": _CONVERSATIONAL_SYSTEM},
                 {"role": "user", "content": question},
@@ -219,7 +219,7 @@ async def answer(repo_id: str, question: str, db: Session) -> dict:
     )
 
     llm_response = await groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[
             {
                 "role": "system",

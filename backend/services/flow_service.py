@@ -172,7 +172,7 @@ async def get_flow(repo_id: str, function_name: str, db: Session) -> dict:
                     for s in steps
                 ])
                 llm = await groq_client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="openai/gpt-oss-20b",
                     messages=[
                         {
                             "role": "system",
@@ -209,7 +209,7 @@ async def get_flow(repo_id: str, function_name: str, db: Session) -> dict:
             for c in all_chunks[:8]
         ])
         llm = await groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {
                     "role": "system",
@@ -227,7 +227,7 @@ async def get_flow(repo_id: str, function_name: str, db: Session) -> dict:
             mermaid = f'flowchart TD\n    A["{function_name}"] --> B["Could not trace - function not found"]'
 
         llm2 = await groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {"role": "system", "content": "You are a code analyst. Explain code flows in plain English, no markdown formatting."},
                 {"role": "user", "content": f"Explain the execution flow of '{function_name}' in this codebase in plain text:\n\n{code_sample}"},
@@ -288,7 +288,7 @@ async def get_flow(repo_id: str, function_name: str, db: Session) -> dict:
         for s in steps
     ])
     llm = await groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[
             {
                 "role": "system",
@@ -334,7 +334,7 @@ async def get_architecture(repo_id: str, db: Session) -> dict:
         ])
 
         llm_mermaid = await groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {"role": "system", "content": "Generate a Mermaid graph LR architecture diagram. Return ONLY valid Mermaid syntax starting with 'graph LR', nothing else."},
                 {"role": "user", "content": f"Generate a Mermaid architecture diagram for this codebase:\n\n{code_sample}"},
@@ -342,7 +342,7 @@ async def get_architecture(repo_id: str, db: Session) -> dict:
         )
 
         llm_explain = await groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {"role": "system", "content": "You are a software architect. Describe architecture in plain English paragraphs. No markdown formatting, no bullet points, no headers. Just clear readable text."},
                 {"role": "user", "content": f"Describe the architecture of this codebase in plain text:\n\n{code_sample}"},
@@ -378,7 +378,7 @@ async def get_architecture(repo_id: str, db: Session) -> dict:
     ])
 
     llm = await groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[
             {
                 "role": "system",
